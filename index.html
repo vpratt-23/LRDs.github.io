@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1,width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0,viewport-fit=cover">
+  <title id="title">COSMOS Explorer</title>
+
+  <!-- Use local CSS or comment this out if blocked -->
+  <!-- <link rel="stylesheet" href="https://cosmos.phy.tufts.edu/~wata/GLASS_Explorer/stylesheets/grizliweb.css"> -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600&subset=latin,latin-ext">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  <style> #figPageBackground {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    z-index: 1000;
+  }
+  #figPage {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+    z-index: 1001;
+  }</style>
+</head>
+
+<body id="body" class="onecolumn" style="height:100%; width:100%; margin:0;">
+
+  <!-- Search by IDs -->
+  <div style="margin:10px;">
+    <input type="text" id="idSearch" placeholder="Search by ID..." 
+           style="width:300px; padding:6px; font-size:16px;" 
+           onkeyup="filterIDs()">
+  </div>
+
+  <!-- Sort by parameters -->
+  <div style="margin:10px;">
+    <label>Sort by:</label>
+    <button onclick="toggleSort('mstar50')" id="btn_mstar50">Mass ⬇</button>
+    <button onclick="toggleSort('z50')" id="btn_z50">Redshift ⬇</button>
+    <button onclick="toggleSort('sfr50')" id="btn_sfr50">logSFR ⬇</button>
+    <button onclick="toggleSort('zmwa50')" id="btn_zmwa50">zMWA ⬇</button>
+    <button onclick="toggleSort('Av50')" id="btn_Av50">Av ⬇</button>
+    <button onclick="toggleSort('Kmag')" id="btn_Kmag">K mag ⬇</button>
+  </div>
+
+  <!-- Filters -->
+  <div style="margin:10px;">
+    <label>z50:</label>
+    <input type="number" id="filterZmin" placeholder="min" style="width:50px;" oninput="applyFiltersAndScroll()">
+    <input type="number" id="filterZmax" placeholder="max" style="width:50px; margin-right:20px;" oninput="applyFiltersAndScroll()">
+
+    <label>mstar50:</label>
+    <input type="number" id="filterMstarMin" placeholder="min" style="width:50px;" oninput="applyFiltersAndScroll()">
+    <input type="number" id="filterMstarMax" placeholder="max" style="width:50px; margin-right:20px;" oninput="applyFiltersAndScroll()">
+
+    <label>logsfr50:</label>
+    <input type="number" id="filterSFRmin" placeholder="min" style="width:50px;" oninput="applyFiltersAndScroll()">
+    <input type="number" id="filterSFRmax" placeholder="max" style="width:50px; margin-right:20px;" oninput="applyFiltersAndScroll()">
+
+    <label>mwa50:</label>
+    <input type="number" id="filterMwaMin" placeholder="min" style="width:50px;" oninput="applyFiltersAndScroll()">
+    <input type="number" id="filterMwaMax" placeholder="max" style="width:50px; margin-right:20px;" oninput="applyFiltersAndScroll()">
+
+    <label>zmwa50:</label>
+    <input type="number" id="filterZmwaMin" placeholder="min" style="width:50px;" oninput="applyFiltersAndScroll()">
+    <input type="number" id="filterZmwaMax" placeholder="max" style="width:50px; margin-right:20px;" oninput="applyFiltersAndScroll()">
+
+    <label>Av50:</label>
+    <input type="number" id="filterAvMin" placeholder="min" style="width:50px;" oninput="applyFiltersAndScroll()">
+    <input type="number" id="filterAvMax" placeholder="max" style="width:50px; margin-right:20px;" oninput="applyFiltersAndScroll()">
+
+    <label>Kmag:</label>
+    <input type="number" id="filterKmagMin" placeholder="min" style="width:50px;" oninput="applyFilters()">
+    <input type="number" id="filterKmagMax" placeholder="max" style="width:50px; margin-right:20px;" oninput="applyFilters()">
+  </div>
+
+  <!-- Class filter -->
+<div style="margin:10px;">
+  <label>Galaxy Type:</label>
+  <button id="btn_quiescent" onclick="toggleClassFilter(4)">Quiescent</button>
+  <button id="btn_dsf" onclick="toggleClassFilter(2)">Dusty SF</button>
+  <button id="btn_sf" onclick="toggleClassFilter(1)">SF</button>
+</div>
+
+  <!-- Main container -->
+  <div id="maincontainer" style="max-height:100%; display:inline-block; width:calc(100% - 20px); margin:10px 5px 10px 10px; font-size:16px;"></div>
+
+  <!-- Zoom overlay -->
+  <div id="figPageBackground" class="figureZoomInBackground" 
+       style="height:100%; width:100%; margin:0; padding:0; display:none;" 
+       onclick="hideFigPage()"></div>
+  <div id="figPage" class="figureZoomIn" 
+       style="background:transparent; border:none; margin:0; padding:0; display:none;" 
+       onclick="hideFigPage()"></div>
+
+<script>
+  var figures, figNames, data;
+
+  // Display names for buttons
+const displayNames = {
+  z50: "Redshift",
+  mstar50: "Mass",
+  sfr50: "SFR",
+  mwa50: "Age<sub>mw</sub>",
+  zmwa50: "zMWA",
+  Av50: "Av",
+  Hmag: "H mag",
+  Kmag: "K mag",
+  UmV: "U-V",
+  VmJ: "V-J",
+  Sumg: "(u-g)s",
+  Sgmi: "(g-i)s"
+};
+
+
+  // Track sort directions (true = high→low, false = low→high)
+  let sortDirections = {
+    mstar50: true,
+    z50: true,
+    sfr50: true,
+    mwa50: true,
+    Av50: true,
+    Kmag: true   
+  };
+
+  window.onload = function() {
+    setup();
+  }
+
+  function setup() {
+    // Load catalog info
+    let req = new XMLHttpRequest();
+    req.open("GET", "./info.json", false);
+    req.send(null);
+    let raw = req.responseText.replace(/"id_u2k":\s*([0-9]+)/g, '"id_u2k":"$1"');
+    let infoJSON = JSON.parse(raw);
+    data = infoJSON.data;
+
+    // Load figure info
+    let req2 = new XMLHttpRequest();
+    req2.open("GET", "./sed.json", false);
+    req2.send(null);
+    let groupJSON = JSON.parse(req2.responseText);
+    figures = groupJSON.figures;
+    figNames = groupJSON.figures.name;
+
+    // Default: sort by mass (high → low)
+    data.sort((a,b) => b.mstar50 - a.mstar50);
+    setupGalaxies();
+  }
+
+  function setupGalaxies() {
+    const mainPage = document.getElementById("maincontainer");
+    mainPage.innerHTML = "";
+
+    for (let i=0; i<data.length; i++) {
+      const row = data[i];
+      const objid = row.id_u2k;
+
+    let galaxyHTML = `
+      <div class="galaxy-block" style="margin-bottom:20px;">
+        <h1 id="${objid}" class="obj-heading"
+            data-z="${row.z50}" data-mstar="${row.mstar50}" data-sfr="${row.sfr50}" data-mwa="${row.mwa50}" 
+            data-zmwa="${row.zmwa50}" data-av="${row.Av50}" data-kmag="${row.Kmag}" data-class="${row.class}"
+            style="margin-top:0; margin-bottom:10px; color:black; font-size:18px;">
+          id: ${row.id_u2k} | 
+          z: ${row.z50?.toFixed(3) ?? "N/A"} 
+            (+${(row.z84 && row.z50) ? (row.z84 - row.z50).toFixed(3) : "N/A"}, 
+              -${(row.z50 && row.z16) ? (row.z50 - row.z16).toFixed(3) : "N/A"}) | 
+          logM*: ${row.mstar50?.toFixed(3) ?? "N/A"} | 
+          logSFR: ${row.sfr50?.toFixed(3) ?? "N/A"} | 
+          Age<sub>mw</sub>: ${row.mwa50?.toFixed(3) ?? "N/A"} | 
+          zMWA: ${row.zmwa50?.toFixed(3) ?? "N/A"} |
+          Av: ${row.Av50?.toFixed(3) ?? "N/A"} | 
+          H: ${row.Hmag?.toFixed(3) ?? "N/A"} | 
+          K: ${row.Kmag?.toFixed(3) ?? "N/A"} | 
+          U-V: ${row.UmV?.toFixed(3) ?? "N/A"} | 
+          V-J: ${row.VmJ?.toFixed(3) ?? "N/A"} | 
+          (u-g)s: ${row.Sumg?.toFixed(3) ?? "N/A"} | 
+          (g-i)s: ${row.Sgmi?.toFixed(3) ?? "N/A"}
+
+          </h1>
+          <div style="display:flex; width:100%;">`;
+            
+
+      for (let f=0; f<figNames.length; f++) {
+        const name = figNames[f];
+        const src  = figures.url[f].replace(/objectid/g, objid);
+        galaxyHTML += `
+          <img
+            id="${objid+name}"
+            src="${src}"
+            onclick="figurePage('${objid+name}')"
+            style="
+              float:left;
+              width:25%;
+              max-height:280px;
+              padding-bottom:10px;
+              padding-top:5px;
+              object-fit:contain;
+              object-position:center;
+              cursor:pointer;
+            "
+          >`;
+      }
+
+      galaxyHTML += `</div>`;
+
+      // second row for uvj and ugi
+      galaxyHTML += `<div style="display:flex; width:100%; margin-top:-10px;">`;
+      
+      const uvj_src = `../figs/obj${objid}/uvj.png`;
+      const ugi_src = `../figs/obj${objid}/ugi.png`;
+      const kcut_src = `../figs/obj${objid}/K_cutout_asinh.png`;
+      
+      galaxyHTML += `
+        <img
+          id="${objid}uvj"
+          src="${uvj_src}"
+          onclick="figurePage('${objid}uvj')"
+          style="
+            float:left;
+            width:25%;
+            height:360px;
+            padding-bottom:15px;
+            padding-top:5px;
+            object-fit:cover;
+            object-position:center;
+            cursor:pointer;
+          "
+        >
+        <img
+          id="${objid}ugi"
+          src="${ugi_src}"
+          onclick="figurePage('${objid}ugi')"
+          style="
+            float:left;
+            width:25%;
+            height:350px;
+            height:auto;
+            padding-bottom:10px;
+            padding-top:5px;
+            object-fit:cover;
+            object-position:contain;
+            cursor:pointer;
+          "
+        >
+
+        <img
+          id="${objid}kcut"
+          src="${kcut_src}"
+          onerror="this.onerror=null; this.src='../figs/obj${objid}/z_cutout.png';"
+          onclick="figurePage('${objid}kcut')"
+          style="
+            float:left;
+            width:25%;
+            height:auto;
+            padding-bottom:10px;
+            padding-top:20px;
+            object-fit:scale-down;
+            object-position:center;
+            cursor:pointer;
+          "
+        >
+      `;
+
+      galaxyHTML += `</div></div>`;  // close both rows and block
+
+      mainPage.insertAdjacentHTML("beforeend", galaxyHTML);
+    }
+
+    applyFilters();
+  }
+
+  function toggleSort(param) {
+    sortDirections[param] = !sortDirections[param];
+
+    data.sort((a,b) => sortDirections[param] ? (b[param] - a[param]) : (a[param] - b[param]));
+    setupGalaxies();
+
+    const btn = document.getElementById("btn_" + param);
+    btn.innerHTML = displayNames[param] + (sortDirections[param] ? " ⬇" : " ⬆");
+  }
+
+  function filterIDs() {
+    const input = document.getElementById("idSearch").value.trim();
+    const allHeadings = document.querySelectorAll("#maincontainer h1");
+
+    allHeadings.forEach(h => {
+      const objid = h.id;
+      const block = h.closest(".galaxy-block");
+      if (input === "" || objid.includes(input)) {
+        block.style.display = "";
+      } else {
+        block.style.display = "none";
+      }
+    });
+  }
+
+  function figurePage(fig) {
+    let el = document.getElementById(fig);
+    let riseoverrun = el.naturalHeight / el.naturalWidth;
+    let winW = window.innerWidth, winH = window.innerHeight;
+
+    let imgHTML;
+    if (riseoverrun * 0.8 * winW > 0.8 * winH) {
+      imgHTML = `<img style="background-color:white; max-height:${winH*0.9}px;" src="${el.src}">`;
+    } else {
+      imgHTML = `<img style="background-color:white; max-width:${winW*0.9}px;" src="${el.src}">`;
+    }
+
+    document.getElementById("figPage").innerHTML = imgHTML;
+    document.getElementById("figPageBackground").style.display = "block";
+    document.getElementById("figPage").style.display = "block";
+  }
+
+  function hideFigPage() {
+    document.getElementById("figPage").style.display = "none";
+    document.getElementById("figPageBackground").style.display = "none";
+  }
+
+  function applyFilters() {
+    const zmin = parseFloat(document.getElementById("filterZmin").value);
+    const zmax = parseFloat(document.getElementById("filterZmax").value);
+    const mstarMin = parseFloat(document.getElementById("filterMstarMin").value);
+    const mstarMax = parseFloat(document.getElementById("filterMstarMax").value);
+    const sfrMin = parseFloat(document.getElementById("filterSFRmin").value);
+    const sfrMax = parseFloat(document.getElementById("filterSFRmax").value);
+    const mwaMin = parseFloat(document.getElementById("filterMwaMin").value);
+    const mwaMax = parseFloat(document.getElementById("filterMwaMax").value);
+    const zmwaMin = parseFloat(document.getElementById("filterZmwaMin").value);
+    const zmwaMax = parseFloat(document.getElementById("filterZmwaMax").value);
+    const avMin = parseFloat(document.getElementById("filterAvMin").value);
+    const avMax = parseFloat(document.getElementById("filterAvMax").value);
+    const kMin = parseFloat(document.getElementById("filterKmagMin").value);
+    const kMax = parseFloat(document.getElementById("filterKmagMax").value);
+
+    const allHeadings = document.querySelectorAll(".obj-heading");
+    // After filtering, scroll to the first visible galaxy
+    const firstVisible = document.querySelector(".galaxy-block:not([style*='display: none'])");
+    if (firstVisible) {
+      firstVisible.scrollIntoView({behavior: "auto", block: "start"});
+    }
+
+    allHeadings.forEach(h => {
+      const z = parseFloat(h.dataset.z);
+      const mstar = parseFloat(h.dataset.mstar);
+      const sfr = parseFloat(h.dataset.sfr);
+      const mwa = parseFloat(h.dataset.mwa);
+      const zmwa = parseFloat(h.dataset.zmwa);
+      const av = parseFloat(h.dataset.av);
+      const k = parseFloat(h.dataset.kmag); 
+      const block = h.closest(".galaxy-block");
+
+      let show = true;
+      if (!isNaN(zmin) && z < zmin) show = false;
+      if (!isNaN(zmax) && z > zmax) show = false;
+      if (!isNaN(mstarMin) && mstar < mstarMin) show = false;
+      if (!isNaN(mstarMax) && mstar > mstarMax) show = false;
+      if (!isNaN(sfrMin) && sfr < sfrMin) show = false;
+      if (!isNaN(sfrMax) && sfr > sfrMax) show = false;
+      if (!isNaN(mwaMin) && mwa < mwaMin) show = false;
+      if (!isNaN(mwaMax) && mwa > mwaMax) show = false;
+      if (!isNaN(zmwaMin) && zmwa < zmwaMin) show = false;
+      if (!isNaN(zmwaMax) && zmwa > zmwaMax) show = false;
+      if (!isNaN(avMin) && av < avMin) show = false;
+      if (!isNaN(avMax) && av > avMax) show = false;
+      if (!isNaN(kMin) && k < kMin) show = false;
+      if (!isNaN(kMax) && k > kMax) show = false;
+      
+      // Class filter
+      const galaxyClass = parseInt(h.dataset.class ?? -1);
+      if (activeClasses.size > 0 && !activeClasses.has(galaxyClass)) {
+          show = false;
+      }
+
+      block.style.display = show ? "" : "none";
+    });
+  }
+
+  function applyFiltersAndScroll() {
+  applyFilters();
+  window.scrollTo(0,0);
+  }
+
+// Track which class filters are active
+let activeClasses = new Set();
+
+function toggleClassFilter(classValue) {
+  if (activeClasses.has(classValue)) {
+    activeClasses.delete(classValue);
+  } else {
+    activeClasses.add(classValue);
+  }
+
+  // Update button styles to show which are active
+  document.getElementById("btn_quiescent").style.backgroundColor = activeClasses.has(4) ? "#a0c4ff" : "";
+  document.getElementById("btn_dsf").style.backgroundColor = activeClasses.has(2) ? "#a0c4ff" : "";
+  document.getElementById("btn_sf").style.backgroundColor = activeClasses.has(1) ? "#a0c4ff" : "";
+
+  applyFilters(); // reapply filters with class logic
+}
+
+
+</script>
+</body>
+</html>

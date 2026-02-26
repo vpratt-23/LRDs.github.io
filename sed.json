@@ -1,0 +1,40 @@
+{ "group": "HSC",
+  "main": "http://cosmos.phy.tufts.edu/~jamielin/HSC-quiescent/cosmos/all",
+  "table": {
+    "catName": ["id_u2k","z50","z16","z84","mstar50","sfr50","mwa50","D4000_dered50","Av50","Hmag","Kmag","UmV","VmJ","Sumg","Sgmi"],
+    "defaultName": ["id_u2k","z50","z16","z84","mstar50","sfr50","mwa50","D4000_dered50","Av50","Hmag","Kmag","UmV","VmJ","Sumg","Sgmi"],
+    "tableName": ["id_u2k","z50","z16","z84","mstar50","sfr50","mwa50","D4000_dered50","Av50","Hmag","Kmag","UmV","VmJ","Sumg","Sgmi"],
+    "tableDescription": ["id_u2k","z50","z16","z84","mstar50","sfr50","mwa50","D4000_dered50","Av50","Hmag","Kmag","UmV","VmJ","Sumg","Sgmi"]
+  },
+
+  "figures": {
+    "name": ["sed", "sfh", "lsfh", "cutout"],
+    "defaultName": ["sed", "sfh", "lsfh", "cutout"],
+    "url": ["../figs/objobjectid/sed.png",
+            "../figs/objobjectid/sfh.png",
+            "../figs/objobjectid/lsfh.png",
+            "../figs/objobjectid/IRAC_cutout.png" 
+          ]
+
+          
+  },
+    "data": {
+    "id_u2k": [],
+    "z50": [],
+    "z16": [],
+    "z84": [],
+    "mstar50": [],
+    "sfr50": [],
+    "mwa50": [],
+    "D4000_dered50": [],
+    "Av50": [],
+    "Hmag": [],
+    "Kmag": [],
+    "UmV": [],
+    "VmJ": [],
+    "Sumg": [],
+    "Sgmi": []
+  }
+,
+  "fields": ["COSMOS"]
+}
