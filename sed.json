@@ -8,12 +8,9 @@
   },
 
   "figures": {
-    "name": ["sed", "sfh", "lsfh", "cutout"],
-    "defaultName": ["sed", "sfh", "lsfh", "cutout"],
-    "url": ["../figs/objobjectid/sed.png",
-            "../figs/objobjectid/sfh.png",
-            "../figs/objobjectid/lsfh.png",
-            "../figs/objobjectid/IRAC_cutout.png" 
+    "name": ["cutouts + sed"],
+    "defaultName": ["cutouts + sed"],
+    "url": ["../figs/objobjectid.pdf",
           ]
 
           
